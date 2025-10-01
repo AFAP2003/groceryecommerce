@@ -146,7 +146,7 @@ export default function InventoryManagementFilter({
         <DropdownMenu modal={true}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
-              <Eye /> Lihat
+              <Eye />Lihat
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
