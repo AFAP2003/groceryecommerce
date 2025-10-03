@@ -8,8 +8,7 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development concurrently -k \"nodemon\" \"ts-node-dev -r tsconfig-paths/register src/worker.ts\"",
-    "build": "rimraf dist && tsc && tsc-alias && copy-folder src/templates dist/templates",
-    "serve": "cross-env NODE_ENV=production concurrently -k \"node dist/index.js\" \"node dist/worker.js\"",
+    "build": "rimraf dist && prisma generate && tsc && tsc-alias && copy-folder src/templates dist/templates",    "serve": "cross-env NODE_ENV=production concurrently -k \"node dist/index.js\" \"node dist/worker.js\"",
     "test": "jest",
     "gen:template": "ts-node scripts/gen-template.ts",
     "prisma:restart": "npm run prisma:migrate:reset && npm run prisma:push && npm run prisma:seed",
