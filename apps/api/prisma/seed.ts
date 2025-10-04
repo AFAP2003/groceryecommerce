@@ -1240,8 +1240,8 @@ async function SEED_STOCK(stores: Store[], products: Product[]) {
 
   let inventories: Inventory[] = [];
 
-  products.forEach((product) => {
-    stores.forEach(async (store) => {
+  for (const product of products) {
+    for (const store of stores) {
       const stock =
         product.name === 'Buah Naga Merah' || product.name === 'Bawang Bombay'
           ? 0
@@ -1255,8 +1255,8 @@ async function SEED_STOCK(stores: Store[], products: Product[]) {
       });
 
       inventories.push(inventory);
-    });
-  });
+    }
+  }
 
   return inventories;
 }
