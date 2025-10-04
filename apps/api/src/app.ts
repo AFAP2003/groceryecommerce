@@ -42,25 +42,19 @@ export default class App {
   private configure(): void {
     this.app.use(
       cors({
-        origin: BASE_FRONTEND_URL,
+        origin: BASE_FRONTEND_URL, // e.g. https://groceryecommerce-frontend.vercel.app
         credentials: true,
       }),
     );
-    this.app.options('*', (req, res) => {
-      res.header('Access-Control-Allow-Origin', 'https://groceryecommerce-frontend.vercel.app')
-      res.header(
-        'Access-Control-Allow-Methods',
-        'GET, POST, PUT, DELETE, OPTIONS'
-      )
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-      res.header('Access-Control-Allow-Credentials', 'true')
-      res.sendStatus(204)
-    })
-    this.app.all('/api/better/auth/*', toNodeHandler(auth));
+  
     this.app.use(json());
     this.app.use(urlencoded({ extended: true }));
     this.app.use(cookieParser());
+  
+    // BetterAuth should come AFTER cors/json/urlencoded
+    this.app.all('/api/better/auth/*', toNodeHandler(auth));
   }
+  
 
   private handleError(): void {
     this.app.use(withNotFound);
