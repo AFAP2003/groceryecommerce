@@ -40,19 +40,28 @@ export default class App {
 
 
   private configure(): void {
+    // ✅ Apply global CORS first
     this.app.use(
       cors({
-        origin: BASE_FRONTEND_URL, // e.g. https://groceryecommerce-frontend.vercel.app
+        origin: BASE_FRONTEND_URL, // e.g. "https://groceryecommerce-frontend.vercel.app"
         credentials: true,
       }),
     );
-  
+
+    // ✅ Body parsers + cookies
     this.app.use(json());
     this.app.use(urlencoded({ extended: true }));
     this.app.use(cookieParser());
-  
-    // BetterAuth should come AFTER cors/json/urlencoded
-    this.app.all('/api/better/auth/*', toNodeHandler(auth));
+
+    // ✅ Special CORS just for BetterAuth (important!)
+    this.app.use(
+      '/api/better/auth',
+      cors({
+        origin: BASE_FRONTEND_URL,
+        credentials: true,
+      }),
+      toNodeHandler(auth)
+    );
   }
   
 
