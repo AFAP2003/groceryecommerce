@@ -70,6 +70,27 @@ export default class App {
       }),
       toNodeHandler(auth)
     );
+
+    this.app.get('/api/better/auth/get-session',
+  cors({ origin: BASE_FRONTEND_URL, credentials: true }),
+  async (req, res, next) => {
+    try {
+      // If your auth export exposes api.getSession, call it the same way other code does
+      if (auth && (auth as any).api && typeof (auth as any).api.getSession === 'function') {
+        // many files in the repo call auth.api.getSession({ req, res })
+        const result = await (auth as any).api.getSession({ req, res });
+        // if result is already an object to return, send it; else forward res as-is
+        if (result !== undefined) return res.json(result);
+        // fallthrough: if the handler wrote to res directly, just end
+        return;
+      }
+      // if no implementation present, return 404 to be explicit
+      res.status(404).json({ message: 'get-session not implemented on server' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
   }
   
 
