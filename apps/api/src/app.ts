@@ -22,7 +22,7 @@ import { TokenRouter } from './routers/token.router';
 import { UserRouter } from './routers/user.router';
 import { VoucherRouter } from './routers/voucher.router';
 import { WebhookRouter } from './routers/webhook.router';
-
+import { fromNodeHeaders } from 'better-auth/node';
 export default class App {
   static VERSION = '1.0.0';
   private app: Express;
@@ -39,20 +39,18 @@ export default class App {
   }
 
 
- // ...existing code...
-private configure(): void {
+ private configure(): void {
   // allow origins for production frontend and local dev
   const allowedOrigins = [
-    BASE_FRONTEND_URL,            // production frontend (from config)
-    'http://localhost:3000',     // Next.js dev (change if your dev host differs)
+    BASE_FRONTEND_URL,        // e.g. "https://groceryecommerce-frontend.vercel.app"
+    'http://localhost:3000', // Next.js dev server (adjust if your dev origin differs)
   ];
 
-  // Global CORS middleware that accepts allowedOrigins (function mode)
+  // Global CORS middleware (function mode) - allows requests with no origin (curl/server-side)
   this.app.use(
     cors({
       origin: (origin, callback) => {
-        // allow requests with no origin (e.g. server-to-server or curl)
-        if (!origin) return callback(null, true);
+        if (!origin) return callback(null, true); // allow server-to-server or curl
         if (allowedOrigins.includes(origin)) return callback(null, true);
         return callback(new Error('Not allowed by CORS'));
       },
@@ -66,33 +64,49 @@ private configure(): void {
   this.app.use(cookieParser());
 
   // Ensure OPTIONS preflight is answered for base and subpaths
-  this.app.options('/api/better/auth', cors({ origin: allowedOrigins, credentials: true }));
-  this.app.options('/api/better/auth/*', cors({ origin: allowedOrigins, credentials: true }));
+  this.app.options(
+    '/api/better/auth',
+    cors({ origin: allowedOrigins, credentials: true }),
+  );
+  this.app.options(
+    '/api/better/auth/*',
+    cors({ origin: allowedOrigins, credentials: true }),
+  );
 
   // Debug logger to confirm requests hit this mount (remove in production)
   this.app.use('/api/better/auth', (req, res, next) => {
-    console.log('[BetterAuth] ', req.method, req.originalUrl, 'Origin:', req.headers.origin);
+    console.log('[BetterAuth]', req.method, req.originalUrl, 'Origin:', req.headers.origin);
     next();
   });
 
-  // Explicit GET proxy for compatibility with clients calling /api/better/auth/get-session
-  this.app.get('/api/better/auth/get-session',
-    cors({ origin: (origin, cb) => { if (!origin) return cb(null, true); if (allowedOrigins.includes(origin)) return cb(null, true); cb(new Error('Not allowed by CORS')); }, credentials: true }),
+  // Explicit GET proxy for /api/better/auth/get-session
+  // Calls the same internal API contract your services use (forward Node headers)
+  this.app.get(
+    '/api/better/auth/get-session',
+    cors({
+      origin: (origin, cb) => {
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(new Error('Not allowed by CORS'));
+      },
+      credentials: true,
+    }),
     async (req, res, next) => {
       try {
         if (auth && (auth as any).api && typeof (auth as any).api.getSession === 'function') {
-          const result = await (auth as any).api.getSession({ req, res });
-          if (result !== undefined) return res.json(result);
-          return;
+          const session = await (auth as any).api.getSession({
+            headers: fromNodeHeaders(req.headers),
+          });
+          return res.json(session ?? null);
         }
         return res.status(404).json({ message: 'get-session not implemented on server' });
       } catch (err) {
         next(err);
       }
-    }
+    },
   );
 
-  // Mount the BetterAuth handler (keep this)
+  // Mount the BetterAuth handler after our explicit routes
   this.app.use(
     '/api/better/auth',
     cors({
@@ -103,10 +117,9 @@ private configure(): void {
       },
       credentials: true,
     }),
-    toNodeHandler(auth)
+    toNodeHandler(auth),
   );
 }
-// ...existing code...
   
 
   private handleError(): void {
