@@ -53,6 +53,14 @@ export default class App {
     this.app.use(urlencoded({ extended: true }));
     this.app.use(cookieParser());
 
+     this.app.options('/api/better/auth/*', cors({
+      origin: BASE_FRONTEND_URL,
+      credentials: true,
+      // optional: allowed headers/methods if you need them explicitly
+      // methods: ['GET','POST','OPTIONS'],
+      // allowedHeaders: ['Content-Type','Authorization'],
+    }));
+
     // ✅ Special CORS just for BetterAuth (important!)
     this.app.use(
       '/api/better/auth',
