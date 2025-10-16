@@ -39,40 +39,27 @@ export default class App {
   }
 
   private configure(): void {
-    // ✅ Apply global CORS first
-    this.app.use(
-      cors({
-        origin: BASE_FRONTEND_URL, // e.g. "https://groceryecommerce-frontend.vercel.app"
-        credentials: true,
-      }),
-    );
+  // ✅ Apply global CORS to ALL routes
+  this.app.use(
+    cors({
+      origin: BASE_FRONTEND_URL, // "https://groceryecommerce-frontend.vercel.app"
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    }),
+  );
 
-    // ✅ Body parsers + cookies
-    this.app.use(json());
-    this.app.use(urlencoded({ extended: true }));
-    this.app.use(cookieParser());
+  // Body parsers + cookies
+  this.app.use(json());
+  this.app.use(urlencoded({ extended: true }));
+  this.app.use(cookieParser());
 
-    this.app.options(
-      '/api/better/auth/*',
-      cors({
-        origin: BASE_FRONTEND_URL,
-        credentials: true,
-        // optional: allowed headers/methods if you need them explicitly
-        // methods: ['GET','POST','OPTIONS'],
-        // allowedHeaders: ['Content-Type','Authorization'],
-      }),
-    );
+  // Handle OPTIONS preflight for BetterAuth
+  this.app.options('/api/better/auth/*', cors({ origin: BASE_FRONTEND_URL, credentials: true }));
 
-    // ✅ Special CORS just for BetterAuth (important!)
-    this.app.use(
-      '/api/better/auth',
-      cors({
-        origin: BASE_FRONTEND_URL,
-        credentials: true,
-      }),
-      toNodeHandler(auth),
-    );
-  }
+  // Mount BetterAuth handler (CORS already applied globally)
+  this.app.use('/api/better/auth', toNodeHandler(auth));
+}
 
   private handleError(): void {
     this.app.use(withNotFound);
