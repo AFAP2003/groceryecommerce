@@ -22,7 +22,7 @@ import { TokenRouter } from './routers/token.router';
 import { UserRouter } from './routers/user.router';
 import { VoucherRouter } from './routers/voucher.router';
 import { WebhookRouter } from './routers/webhook.router';
-import { fromNodeHeaders } from 'better-auth/node';
+
 export default class App {
   static VERSION = '1.0.0';
   private app: Express;
@@ -38,89 +38,41 @@ export default class App {
     this.handleError();
   }
 
+  private configure(): void {
+    // ✅ Apply global CORS first
+    this.app.use(
+      cors({
+        origin: BASE_FRONTEND_URL, // e.g. "https://groceryecommerce-frontend.vercel.app"
+        credentials: true,
+      }),
+    );
 
- private configure(): void {
-  // allow origins for production frontend and local dev
-  const allowedOrigins = [
-    BASE_FRONTEND_URL,        // e.g. "https://groceryecommerce-frontend.vercel.app"
-    'http://localhost:3000', // Next.js dev server (adjust if your dev origin differs)
-  ];
+    // ✅ Body parsers + cookies
+    this.app.use(json());
+    this.app.use(urlencoded({ extended: true }));
+    this.app.use(cookieParser());
 
-  // Global CORS middleware (function mode) - allows requests with no origin (curl/server-side)
-  this.app.use(
-    cors({
-      origin: (origin, callback) => {
-        if (!origin) return callback(null, true); // allow server-to-server or curl
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('Not allowed by CORS'));
-      },
-      credentials: true,
-    }),
-  );
+    this.app.options(
+      '/api/better/auth/*',
+      cors({
+        origin: BASE_FRONTEND_URL,
+        credentials: true,
+        // optional: allowed headers/methods if you need them explicitly
+        // methods: ['GET','POST','OPTIONS'],
+        // allowedHeaders: ['Content-Type','Authorization'],
+      }),
+    );
 
-  // Body parsers + cookies
-  this.app.use(json());
-  this.app.use(urlencoded({ extended: true }));
-  this.app.use(cookieParser());
-
-  // Ensure OPTIONS preflight is answered for base and subpaths
-  this.app.options(
-    '/api/better/auth',
-    cors({ origin: allowedOrigins, credentials: true }),
-  );
-  this.app.options(
-    '/api/better/auth/*',
-    cors({ origin: allowedOrigins, credentials: true }),
-  );
-
-  // Debug logger to confirm requests hit this mount (remove in production)
-  this.app.use('/api/better/auth', (req, res, next) => {
-    console.log('[BetterAuth]', req.method, req.originalUrl, 'Origin:', req.headers.origin);
-    next();
-  });
-
-  // Explicit GET proxy for /api/better/auth/get-session
-  // Calls the same internal API contract your services use (forward Node headers)
-  this.app.get(
-    '/api/better/auth/get-session',
-    cors({
-      origin: (origin, cb) => {
-        if (!origin) return cb(null, true);
-        if (allowedOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error('Not allowed by CORS'));
-      },
-      credentials: true,
-    }),
-    async (req, res, next) => {
-      try {
-        if (auth && (auth as any).api && typeof (auth as any).api.getSession === 'function') {
-          const session = await (auth as any).api.getSession({
-            headers: fromNodeHeaders(req.headers),
-          });
-          return res.json(session ?? null);
-        }
-        return res.status(404).json({ message: 'get-session not implemented on server' });
-      } catch (err) {
-        next(err);
-      }
-    },
-  );
-
-  // Mount the BetterAuth handler after our explicit routes
-  this.app.use(
-    '/api/better/auth',
-    cors({
-      origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('Not allowed by CORS'));
-      },
-      credentials: true,
-    }),
-    toNodeHandler(auth),
-  );
-}
-  
+    // ✅ Special CORS just for BetterAuth (important!)
+    this.app.use(
+      '/api/better/auth',
+      cors({
+        origin: BASE_FRONTEND_URL,
+        credentials: true,
+      }),
+      toNodeHandler(auth),
+    );
+  }
 
   private handleError(): void {
     this.app.use(withNotFound);
