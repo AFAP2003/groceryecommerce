@@ -93,7 +93,9 @@ export default class App {
   }
 
   public start(): void {
-    this.app.listen(PORT, () => {
+    const host = '0.0.0.0';
+
+    this.app.listen(PORT, host, () => {
       console.log(`  ➜  [API] Local:   http://localhost:${PORT}/api`);
     });
   }
