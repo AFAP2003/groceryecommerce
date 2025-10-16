@@ -94,9 +94,11 @@ export default class App {
 
   public start(): void {
     const host = '0.0.0.0';
+    const port = Number(PORT) || 8000;
 
-    this.app.listen(PORT, host, () => {
-      console.log(`  ➜  [API] Local:   http://localhost:${PORT}/api`);
+    this.app.listen(port, host, () => {
+      console.log(`  ➜  [API] Listening on port: ${port}`);
+      console.log(`  ➜  [API] Local:   http://localhost:${port}/api`);
     });
   }
 }
