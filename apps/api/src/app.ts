@@ -1,4 +1,4 @@
-import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
+import { toNodeHandler } from 'better-auth/node';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { Express, json, urlencoded } from 'express';
@@ -38,43 +38,17 @@ export default class App {
     this.handleError();
   }
 
-   private configure(): void {
-    // ✅ Apply global CORS to ALL routes
+  private configure(): void {
     this.app.use(
       cors({
-        origin: [BASE_FRONTEND_URL, 'http://localhost:3000'], // Allow both prod and local dev
+        origin: BASE_FRONTEND_URL,
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
       }),
     );
-
-    // Body parsers + cookies
+    this.app.all('/api/better/auth/*', toNodeHandler(auth));
     this.app.use(json());
     this.app.use(urlencoded({ extended: true }));
     this.app.use(cookieParser());
-
-    // --- NEW: Explicit GET handler for get-session ---
-    this.app.get('/api/better/auth/get-session', async (req, res) => {
-      try {
-        const session = await auth.api.getSession({
-          headers: fromNodeHeaders(req.headers),
-        });
-        res.json(session);
-      } catch (error) {
-        res.status(401).json({ message: 'Unauthorized' });
-      }
-    });
-    // --- End of new code ---
-
-    // Handle OPTIONS preflight for BetterAuth
-    this.app.options(
-      '/api/better/auth/*',
-      cors({ origin: BASE_FRONTEND_URL, credentials: true }),
-    );
-
-    // Mount BetterAuth handler for its POST routes (like sign-in, sign-out)
-    this.app.use('/api/better/auth', toNodeHandler(auth));
   }
 
   private handleError(): void {
