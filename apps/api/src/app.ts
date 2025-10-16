@@ -1,4 +1,4 @@
-import { toNodeHandler } from 'better-auth/node';
+import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { Express, json, urlencoded } from 'express';
@@ -39,18 +39,41 @@ export default class App {
   }
 
   private configure(): void {
-    this.app.use(
-      cors({
-        origin: BASE_FRONTEND_URL,
-        credentials: true,
-      }),
-    );
-    this.app.all('/api/better/auth/*', toNodeHandler(auth));
-    this.app.use(json());
-    this.app.use(urlencoded({ extended: true }));
-    this.app.use(cookieParser());
-  }
+  // 1. Apply global CORS first
+  const allowedOrigins = [BASE_FRONTEND_URL, 'http://localhost:3000'];
+  this.app.use(
+    cors({
+      origin: function (origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+    }),
+  );
 
+  // 2. Body parsers + cookies
+  this.app.use(json());
+  this.app.use(urlencoded({ extended: true }));
+  this.app.use(cookieParser());
+
+  // 3. Explicit GET handler for get-session to prevent 404s
+  this.app.get('/api/better/auth/get-session', async (req, res) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+      });
+      return res.json(session);
+    } catch (error) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+  });
+
+  // 4. Mount BetterAuth handler for its other routes (e.g., POST for sign-in)
+  this.app.use('/api/better/auth', toNodeHandler(auth));
+}
   private handleError(): void {
     this.app.use(withNotFound);
     this.app.use(withError);
